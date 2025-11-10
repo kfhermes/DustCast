@@ -26,9 +26,9 @@ This command installs all required packages for running the model. If you also w
 ```
 pip install -e .[eval]
 ```
-Note that this might take several minutes to complete. For this paper used PyTorch 2.4.1 and PyTorch Lightning 2.5.0. Compatibility with newer versions is not guaranteed.
+Note that this might take several minutes to complete. For this paper we used PyTorch 2.4.1 and PyTorch Lightning 2.5.0. Compatibility with newer versions is not guaranteed.
 
-If want to train the model, you also need to set up your WandB account. Sign up at [wandb.ai](http://wandb.ai), then set up your WandB API key by running
+If you want to train the model, you also need to set up your WandB account. Sign up at [wandb.ai](http://wandb.ai), then set up your WandB API key by running
 ```
 wandb login
 ```
@@ -39,7 +39,7 @@ wandb login
 
 ## Generating nowcasts
 We provide the pretrained model and preprocessed SEVIRI observations that can be used for running the case study from our paper. Further input data can be obtained directly from [EUMETSAT](https://navigator.eumetsat.int/product/EO:EUM:DAT:MSG:HRSEVIRI). For generating nowcasts, download the model weights from [Zenodo](https://doi.org/10.5281/zenodo.17508993) and place them into `/data/models`.
-From the main DustCast directory, run
+In the main DustCast directory, run
 ```
 python nowcast.py --arg_init=20240607T1700 --n_fcframes 8 --n_ens=5
 ```
@@ -65,17 +65,17 @@ Model evaluation is split into three blocks:
    ```
     python eval_generate_nowcasts.py --config=/path/to/eval.yaml
     ```
-    This will launch the generation of forecasts for evaluation purposes. The script saves all forecasts into netcdf files, and includes observations for the same timesteps where available to allow easy comparison to ground truth.
+    This will launch the generation of forecasts for evaluation purposes. The script saves all forecasts into netcdf files, and includes observations for the same timesteps where available to allow easy comparisons.
 
 2. Compute evaluation statistics
    
    To compute metrics for the previously generated evaluation forecasts, run
     ```
-    python eval_compute_stats_nowcast.py --eval_dir /path/to/evaluation/forecasts --btbg_dir /path/to/cloud-screened/background/images
+    python eval_compute_stats_nowcast.py --idir_data /path/to/evaluation/forecasts --idir_btbg /path/to/cloud-screened/background/images
     ```
    To generate baseline metrics for a persistence forecast, run
     ```
-    python eval_compute_stats_persistence --eval_dir /path/to/evaluation/data --btbg_dir /path/to/cloud-screened/background/images
+    python eval_compute_stats_persistence --idir_data /path/to/evaluation/data --idir_btbg /path/to/cloud-screened/background/images
     ```
     
 3. Visualise the evaluation results
