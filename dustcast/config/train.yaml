@@ -1,0 +1,48 @@
+# ========================================
+# DATA CONFIGURATION
+# ========================================
+idir_data: "./west-africa/seviri_npy/train" # Directory with train/valid data: numpy files of shape (channel, lat, lon), timestamp in filename (yyyymmdd-HHMM)
+dir_ds_save: "./west-africa/datasets"  # optional: directory to save generated train/valid datasets; use fast storage if possible
+save_datasets: False  # Save generated datasets to disk
+load_datasets: False  # Load datasets from disk
+load_into_memory: False  # Load entire dataset into memory (False = load on-the-fly)
+num_workers: 1  # Number of workers for data loading
+len_block: 1000  # Length of blocks for train/validation split
+frac_train: 0.8  # Fraction of data used for training (rest for validation)
+
+# ========================================
+# MODEL CONFIGURATION
+# ========================================
+model_name: "unet_512_rgb"
+img_size: 256  # Input image size
+load_model_from_checkpoint: "./data/models/DustCast_12gwe56u_unet_RGB_512.pth"
+load_model_from_artifact: False  # Load from WandB artifact
+is_state_dict: True  # Set True if loaded model data is state_dict
+
+# ========================================
+# DIFFUSION CONFIGURATION
+# ========================================
+noise_steps: 1000  # Number of noise steps in diffusion process
+sampler_steps: 333  # Number of sampler steps in diffusion process
+same_noise: False  # Use same noise for all color channels
+seed: 1  # Random seed for reproducibility
+
+# ========================================
+# TRAINING CONFIGURATION
+# ========================================
+max_devices: 4  # Maximum number of devices for training
+epochs: 10
+batch_size: 16
+loss_type: "MSE"  # Options: L1, MSE
+lr: 1e-4  # Maximum learning rate
+lr_sched: "OneCycleLR"  # Options: OneCycleLR, CosineAnnealing
+extended_log_freq: 5  # Frequency (epochs) for extended metrics logging to WandB
+
+# ========================================
+# DATA PREPROCESSING
+# ========================================
+# Normalization limits for [channel1, channel2, channel3]
+normlims:
+  - [-4, 2]    # Channel 1: BTD(120-108)
+  - [0, 15]    # Channel 2: BTD(108-087)
+  - [200, 320] # Channel 3: BT(108)

@@ -1,0 +1,41 @@
+# ========================================
+# DATA CONFIGURATION
+# ========================================
+idir_data: "./data/seviri_sample_input"
+idir_btbg: "./data/seviri_background"
+idir_coords: "./data/coords"  # Directory containing coordinate files *lon.npy and *lat.npy
+odir: "./nowcast"  # Output directory to save predictions
+
+# ========================================
+# MODEL CONFIGURATION
+# ========================================
+model_name: "unet_512_rgb"
+img_size: 256  # Image size to use
+load_model_from_checkpoint: "./data/models/DustCast_12gwe56u_unet_RGB_512.pth"  # Lightning checkpoint to load model data from
+load_model_from_artifact: False  # WandB artifact to load model data
+is_state_dict: True  # Set to true if loaded model data is state_dict
+
+# ========================================
+# FORECAST CONFIGURATION
+# ========================================
+n_fcframes: 8  # Number of future frames to be generated
+n_ens: 5  # Ensemble size
+sampler_steps: 100  # Number of sampler steps in diffusion process
+same_noise: False
+
+# ========================================
+# DATA PREPROCESSING
+# ========================================
+# Normalization limits for [channel1, channel2, channel3]
+normlims:
+  - [-4, 2]    # Channel 1: BTD(120-108)
+  - [0, 15]    # Channel 2: BTD(108-087)
+  - [200, 320] # Channel 3: BT(108)
+
+
+# ========================================
+# OUTPUT OPTIONS
+# ========================================
+save_netcdf: True # Save predictions as NetCDF files
+save_plots_rgb: True # Save RGB plots
+save_plots_P: True # Save probability plots

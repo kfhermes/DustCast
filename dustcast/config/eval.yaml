@@ -1,0 +1,36 @@
+# ========================================
+# DATA CONFIGURATION
+# ========================================
+idir_data: "./west-africa/seviri_npy/2024"
+idir_coords: "./west-africa"  # Directory containing coordinate files *lon.npy and *lat.npy
+odir: "./predictions"  # Output directory to save predictions
+idx_start: 0  # Starting index of samples to evaluate
+idx_stop: 14000  # Stopping index of samples to evaluate
+idx_custom: False  # Custom list of indices, overrides idx_start and idx_stop
+minutes: [0]  # Minutes for which forecasts are initialised (e.g., 0 initialises only forecasts at hour:00)
+
+# ========================================
+# MODEL CONFIGURATION
+# ========================================
+model_name: "unet_512_rgb"
+img_size: 256  # Image size to use
+load_model_from_checkpoint: "../../data/models/DustCast_12gwe56u_unet_RGB_512.pth"  # Lightning checkpoint to load model data from
+load_model_from_artifact: False  # WandB artifact to load model data
+is_state_dict: True  # Set to true if loaded model data is state_dict
+
+# ========================================
+# FORECAST CONFIGURATION
+# ========================================
+n_fcframes: 24  # Number of future frames to be generated
+n_ens: 5  # Ensemble size
+sampler_steps: 100  # Number of sampler steps in diffusion process
+same_noise: False
+
+# ========================================
+# DATA PREPROCESSING
+# ========================================
+# Normalization limits for [channel1, channel2, channel3]
+normlims:
+  - [-4, 2]    # Channel 1: BTD(120-108)
+  - [0, 15]    # Channel 2: BTD(108-087)
+  - [200, 320] # Channel 3: BT(108)

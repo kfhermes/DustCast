@@ -1,0 +1,309 @@
+import os
+from datetime import datetime
+from pathlib import Path
+
+import fire
+import numpy as np
+import torch
+from netCDF4 import Dataset, date2num
+from omegaconf import OmegaConf
+
+from dustcast.evaluation.utils import get_coords, check_all_data_avail, check_time_is_selected
+from dustcast.evaluation.io import find_files_in_dir
+from dustcast.features.datasets import SeviriDatasetEvaluation
+from dustcast.features.utils import generate_forecast_ens, mkdir_if_not_exists, set_seed, stack_frames_channels
+from dustcast.features.rgb import norm_to_bt
+from dustcast.model.setup import UNet2D, get_parameters_for_UNet2DModel
+from dustcast.model.utils_ddpm import ddim_sampler
+
+
+def get_idxs(idx_start=0, idx_stop=1000, idx_custom=False):
+    if idx_custom:
+        print(f"Using custom indices")
+        idxs = idx_custom
+    else:
+        idxs = np.arange(idx_start, idx_stop +1)
+    return idxs
+
+
+def create_variable(nc, name, dtype, dimensions, long_name, units=None, zlib=True, complevel=4):
+    """
+    Helper function to create a NetCDF variable with attributes.
+    """
+    var = nc.createVariable(name, dtype, dimensions, zlib=zlib, complevel=complevel)
+    var.long_name = long_name
+    if units:
+        var.units = units
+    return var
+
+
+def save_nowcast_eval_netcdf(
+    odir,
+    btd120_108,
+    btd108_087,
+    bt108,
+    btd120_108_obs,
+    btd108_087_obs,
+    bt108_obs,
+    btd120_108_inp,
+    btd108_087_inp,
+    bt108_inp,
+    obs_flag,
+    time_init,
+    time_input,
+    time_valid,
+    lat=None,
+    lon=None,
+    time_units="hours since 2000-01-01 00:00:00",
+    calendar="gregorian",
+    compression_level=9,
+):
+    time_size, ens_size, lat_size, lon_size = btd120_108.shape
+    time_input_size = time_input.shape[0]
+
+    time_input_numeric = date2num(time_input.to_pydatetime(), units=time_units, calendar=calendar)
+    time_valid_numeric = date2num(time_valid.to_pydatetime(), units=time_units, calendar=calendar)
+
+    output_file = f"{time_init.strftime('%Y%m%d-%H%M')}.nc"
+    mkdir_if_not_exists(odir)
+    opath = os.path.join(odir, output_file)
+
+    if lat is None:
+        print("Warning: No lat coordinates specified. Writing dummy values.")
+        lat = np.arange(lat_size)
+    if lon is None:
+        print("Warning: No lon coordinates specified. Writing dummy values.")
+        lon = np.arange(lon_size)
+
+    try:
+        with Dataset(opath, "w", format="NETCDF4") as nc:
+            nc.createDimension("time_in", time_input_size)
+            nc.createDimension("time", time_size)
+            nc.createDimension("ens", ens_size)
+            nc.createDimension("lat", lat_size)
+            nc.createDimension("lon", lon_size)
+
+            time_in_var = create_variable(nc, "time_input", "f8", ("time_in",), "Input time of forecast", time_units)
+            time_fc_var = create_variable(nc, "time_valid", "f8", ("time",), "Valid time of forecast", time_units)
+            lat_var = create_variable(nc, "lat", "f4", ("lat",), "Latitude", "degrees_north")
+            lon_var = create_variable(nc, "lon", "f4", ("lon",), "Longitude", "degrees_east")
+
+            btd120_108_var = create_variable(
+                nc, "btd120_108", "f4", ("time", "ens", "lat", "lon"),
+                "Predicted brightness temperatures difference between IR120 and IR108.", "K", zlib=True, complevel=compression_level
+            )
+            btd108_087_var = create_variable(
+                nc, "btd108_087", "f4", ("time", "ens", "lat", "lon"),
+                "Predicted brightness temperatures difference between IR108 and IR087.", "K", zlib=True, complevel=compression_level
+            )
+            bt108_var = create_variable(
+                nc, "bt108", "f4", ("time", "ens", "lat", "lon"),
+                "Predicted brightness temperatures at IR108.", "K", zlib=True, complevel=compression_level
+            )
+
+            btd120_108_obs_var = create_variable(
+                nc, "btd120_108_obs", "f4", ("time", "lat", "lon"),
+                "Observed brightness temperatures difference between IR120 and IR108.", "K", zlib=True, complevel=compression_level
+            )
+            btd108_087_obs_var = create_variable(
+                nc, "btd108_087_obs", "f4", ("time", "lat", "lon"),
+                "Observed brightness temperatures difference between IR108 and IR087.", "K", zlib=True, complevel=compression_level
+            )
+            bt108_obs_var = create_variable(
+                nc, "bt108_obs", "f4", ("time", "lat", "lon"),
+                "Observed brightness temperatures at IR108.", "K", zlib=True, complevel=compression_level
+            )
+
+            obs_flag_var = create_variable(
+                nc, "obs_flag", "i4", ("time",), "Flag indicating if observation is available (1) or not (0)."
+            )
+
+            btd120_108_inp_var = create_variable(
+                nc, "btd120_108_inp", "f4", ("time_in", "lat", "lon"),
+                "Model input brightness temperatures difference between IR120 and IR108.", "K", zlib=True, complevel=compression_level
+            )
+            btd108_087_inp_var = create_variable(
+                nc, "btd108_087_inp", "f4", ("time_in", "lat", "lon"),
+                "Model input brightness temperatures difference between IR108 and IR087.", "K", zlib=True, complevel=compression_level
+            )
+            bt108_inp_var = create_variable(
+                nc, "bt108_inp", "f4", ("time_in", "lat", "lon"),
+                "Model input brightness temperatures at IR108.", "K", zlib=True, complevel=compression_level
+            )
+
+            current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            nc.title = "dust-cast evaluation"
+            nc.summary = (
+                "Evaluation nowcast of SEVIRI brightness temperature channels and brightness temperature differences "
+                "with the 'dust-cast' model. Observations are preprocessed and remapped from the native SEVIRI grid "
+                "to the regular model grid."
+            )
+            nc.history = f"File created on {current_time}"
+            nc.time_init = time_init.strftime("%Y-%m-%d %H:%M:%S")
+
+            time_in_var[:] = time_input_numeric
+            time_fc_var[:] = time_valid_numeric
+            lat_var[:] = lat
+            lon_var[:] = lon
+            btd120_108_var[:, :, :, :] = btd120_108
+            btd108_087_var[:, :, :, :] = btd108_087
+            bt108_var[:, :, :, :] = bt108
+            btd120_108_obs_var[:, :, :] = btd120_108_obs
+            btd108_087_obs_var[:, :, :] = btd108_087_obs
+            bt108_obs_var[:, :, :] = bt108_obs
+            obs_flag_var[:] = obs_flag
+            btd120_108_inp_var[:, :, :] = btd120_108_inp
+            btd108_087_inp_var[:, :, :] = btd108_087_inp
+            bt108_inp_var[:, :, :] = bt108_inp
+
+        if os.path.exists(output_file):
+            print(f"NetCDF file '{output_file}' created successfully.")
+
+    except Exception as e:
+        print(f"Error creating NetCDF file '{output_file}': {e}")
+
+
+
+def _setup(
+        idir_data='.',
+        load_model_from_checkpoint=False,
+        load_model_from_artifact=False,
+        idir_coords='.',
+        n_inframes=3,
+        n_fcframes=24,
+        sampler_steps=100,
+        same_noise=True,
+        device='cuda' if torch.cuda.is_available() else 'cpu',
+        img_size=128,
+        model_name='unet_256_rgb',
+        normlims = [[-4, 2], [0, 15], [200, 320]],
+        is_state_dict=False,
+    ):
+    
+    files = find_files_in_dir(idir_data, pattern="*.npy", recursive=False)
+    eval_ds = SeviriDatasetEvaluation(files=files, num_frames=n_inframes+n_fcframes, img_size=img_size, normlims=normlims, stack_chfr=False)
+    sampler = ddim_sampler(sampler_steps, same_noise=same_noise, silent=True)
+    model_params = get_parameters_for_UNet2DModel(model_name)
+
+    if load_model_from_artifact:
+        print(f"Loading model from wandb artifact: {load_model_from_artifact}")
+        model = UNet2D.from_wandb_artifact(model_params, load_model_from_artifact, is_state_dict=is_state_dict).to(device)
+    elif load_model_from_checkpoint:
+        model = UNet2D.from_lightning_ckpoint(model_params, load_model_from_checkpoint, is_state_dict=is_state_dict).to(device)
+    else:
+        raise ValueError("No checkpoint or wandb artifact specified. Please provide one to load the model weights.")
+
+    coords = get_coords(idir_coords, img_size)
+    return eval_ds, model, sampler, coords
+
+
+    
+
+def generate_eval_nowcast(odir = './predictions',
+                            idir_data='.',
+                            load_model_from_checkpoint=False,
+                            load_model_from_artifact=False,
+                            is_state_dict=False,
+                            idir_coords=False,
+                            model_name='unet_256_rgb',
+                            sampler_steps=50,
+                            img_size=256,
+                            n_inframes=3,
+                            n_channels=3,
+                            n_fcframes=24,
+                            n_ens=5,
+                            same_noise=True,
+                            normlims=[[-4, 2], [0, 15], [200, 320]],
+                            idx_start=0,
+                            idx_stop=1000,
+                            idx_custom=False,
+                            minutes=[0],
+                            device='cuda' if torch.cuda.is_available() else 'cpu',
+                            ):
+    
+    dataset, model, sampler, coords = _setup(idir_data=idir_data,
+                                             load_model_from_checkpoint=load_model_from_checkpoint,
+                                             load_model_from_artifact=load_model_from_artifact,
+                                             idir_coords=idir_coords,
+                                             n_inframes=n_inframes,
+                                             n_fcframes=n_fcframes,
+                                             sampler_steps=sampler_steps,
+                                             same_noise=same_noise,
+                                             device=device,
+                                             img_size=img_size,
+                                             model_name=model_name,
+                                             normlims=normlims,
+                                             is_state_dict=is_state_dict,
+                                             )
+
+    
+    idxs = get_idxs(idx_start=idx_start, idx_stop=idx_stop, idx_custom=idx_custom)
+
+    cnt = 0 # count forecasts
+    for idx in idxs:
+        print(f'Index: {idx}    Total count: {cnt}')
+        data, time, data_avail = dataset[idx]
+        time_init = time[n_inframes-1]
+        
+        # Check if time is selected and all input data is available
+        if check_time_is_selected(time_init, minutes) & check_all_data_avail(data_avail[:n_inframes]):
+            print(f"Generating nowcast for index {idx}: {time_init}")
+            print(f"Number of data files: {np.sum(data_avail)} / {len(data_avail)}")
+            print(f'Data is available: {data_avail}')
+            cnt += 1
+            input = stack_frames_channels(data[:n_inframes])
+            input = input.clone().detach().to(device)
+            
+            # Generate forecasts
+            with torch.amp.autocast(model.device.type):
+                forecast_ens = generate_forecast_ens(
+                    model=model,
+                    sampler=sampler,
+                    input_frames=input,
+                    n_future_frames=n_fcframes,
+                    n_channels=n_channels,
+                    ens_size=n_ens,
+                    )
+
+            # Prepare data for saving
+            prd = forecast_ens.cpu().numpy()
+            inp = data[:n_inframes] # inpput into model
+            obs = data[n_inframes:] # obs matching prd
+            time_input = time[:n_inframes] # time input into model
+            time_valid = time[n_inframes:] # time when prediction is valid
+            data_avail = data_avail[n_inframes:] # bool indicating if obs available (True) or filled with zeros (False)        
+
+            prd_bt = norm_to_bt(prd, normlims, channel_dim=2)
+            inp_bt = norm_to_bt(inp, normlims, channel_dim=1)
+            obs_bt = norm_to_bt(obs, normlims, channel_dim=1)
+                
+            save_nowcast_eval_netcdf(
+                odir=odir,
+                btd120_108=prd_bt[:,:,0,:,:],
+                btd108_087=prd_bt[:,:,1,:,:],
+                bt108=prd_bt[:,:,2,:,:],
+                btd120_108_obs=obs_bt[:,0,:,:],
+                btd108_087_obs=obs_bt[:,1,:,:],
+                bt108_obs=obs_bt[:,2,:,:],
+                obs_flag=data_avail,
+                btd120_108_inp=inp_bt[:,0,:,:],
+                btd108_087_inp=inp_bt[:,1,:,:],
+                bt108_inp=inp_bt[:,2,:,:],
+                time_init=time_init,
+                time_input=time_input,
+                time_valid=time_valid,
+                **coords
+                )
+
+
+
+def main(config=None, **kwargs):
+    config = OmegaConf.load(config) if (config is not None) else {}
+    config.update(kwargs)
+    print("Configuration:")
+    print(OmegaConf.to_yaml(config))
+    set_seed(1, reproducible=True)
+    generate_eval_nowcast(**config)
+
+if __name__ == "__main__":
+    fire.Fire(main)
