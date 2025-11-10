@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dustcast"
+version = "1.0.0"
+description = "DustCast: Nowcasting of dust and convective storms via diffusion-model predictions of SEVIRI RGB imagery"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    {name = "kfhermes"}
+]
+keywords = ["atmospheric-science", "artificial-intelligence", "diffusion-models", "nowcasting"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    # Core scientific computing
+    "pandas==2.2.2",
+    "torch==2.4.1",
+    "torchvision==0.19.1",
+    "diffusers==0.30.3",
+    "pytorch-lightning>=2.5.0",
+    "netcdf4>=1.6.2",
+    "pyproj>=3.6.1",
+    "shapely>=2.0.5",
+    "cartopy>=0.22.0",
+    "matplotlib>=3.9.2",
+    "wandb>=0.18.7",
+    "omegaconf>=2.3.0",
+    "fire",
+    "fastprogress"
+]
+
+[project.optional-dependencies]
+eval = [
+    "tables>=3.10.1",
+    "scipy>=1.14.1",
+    "h5py",
+    "scikit-image>=0.24.0",
+    "scikit-learn>=1.5.1",
+    "ipython>=8.27.0",
+    "pillow>=11.0.0",
+]
+
+[project.urls]
+Repository = "https://github.com/kfhermes/DustCast"
+
+[tool.setuptools]
+packages = ["dustcast"]
