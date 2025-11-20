@@ -17,7 +17,7 @@ This repository contains the code to train, evaluate and run our nowcast model D
 
 # Installation
 
-We recommended to install the code in its own environment.
+We recommend to install the code in its own environment.
 Clone this repository, then run in its main directory
 ```
 pip install -e .
@@ -65,7 +65,7 @@ Model evaluation is split into three blocks:
    ```
     python eval_generate_nowcasts.py --config=/path/to/eval.yaml
     ```
-    This will launch the generation of forecasts for evaluation purposes. The script saves all forecasts into netcdf files, and includes observations for the same timesteps where available to allow easy comparisons.
+    This will launch the generation of forecasts for evaluation purposes. The script saves all forecasts into netCDF files, and includes observations for the same timesteps where available to allow easy comparisons.
 
 2. Compute evaluation statistics
    
