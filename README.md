@@ -1,12 +1,12 @@
 # DustCast: Nowcasting of dust and convective storms via diffusion-model predictions of SEVIRI RGB imagery
 
 [![GitHub](https://img.shields.io/badge/-GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/kfhermes/DustCast_draft)
-[![paper](https://img.shields.io/badge/-SSRN-154881?style=flat&logo=ssrn&logoColor=white)](http://dx.doi.org/10.2139/ssrn.5430712)
 [![license](https://img.shields.io/badge/MIT-green?style=flat&logo=license&logoColor=white)](https://github.com/kfhermes/DustCast_draft/tree/main?tab=MIT-1-ov-file#MIT-1-ov-file)
+[![DOI](https://zenodo.org/badge/DOI/10.1016/j.wace.2025.100828.svg)](https://doi.org/10.1016/j.wace.2025.100828)
 
 This repository contains the code to train, evaluate and run our nowcast model DustCast from the paper:
 
-[Hermes, K., Marsham, J. H., Bollasina, M. A., Brooks, M., Klose, M., & Marenco, F. "Nowcasting of dust and convective storms via diffusion-model predictions of SEVIRI RGB imagery." Submitted to Weather and Climate Extremes.](http://dx.doi.org/10.2139/ssrn.5430712)
+[Hermes, K., Marsham, J. H., Bollasina, M., Brooks, M., Klose, M., & Marenco, F. (2025). Nowcasting of dust and convective storms via diffusion-model predictions of SEVIRI RGB imagery. Weather and Climate Extremes, 100828.](https://doi.org/10.1016/j.wace.2025.100828)
 
 
 *DustCast is a simple diffusion model for image-based nowcasting of dust storms in West Africa. The model performs image-to-image translation in pixel space to predict next frames of the SEVIRI desert dust RGB composite, a product of false-colour satellite images highlighting both dust and deep convection. DustCast was trained for a large domain over West Africa and can predict both convective storms and convectively generated dust storms which currently operational numerical weather prediction (NWP) models may not reliably reproduce. Furthermore, it can generate ensemble predictions, allowing a probabilistic forecast assessment. On average, our model achieves useful skill (Fractions Skill Score > 0.5) for predicting dust storms up to 5 hours lead time, and for convective systems for up to 4 hours. Our approach provides a valuable tool that could be used in operational forecasting to improve the prediction of dust storms, convective storms, and indeed other weather events. Due to the technical similarity of RGB composite imagery from geostationary satellites, this approach could also be adapted to nowcast other RGB composites, such as those for ash, or convective storms.*
