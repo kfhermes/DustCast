@@ -2,14 +2,14 @@
 
 [![GitHub](https://img.shields.io/badge/-GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/kfhermes/DustCast_draft)
 [![license](https://img.shields.io/badge/MIT-green?style=flat&logo=license&logoColor=white)](https://github.com/kfhermes/DustCast_draft/tree/main?tab=MIT-1-ov-file#MIT-1-ov-file)
-[![DOI](https://zenodo.org/badge/DOI/10.1016/j.wace.2025.100828.svg)](https://doi.org/10.1016/j.wace.2025.100828)
+[![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.wace.2025.100828-blue)](https://doi.org/10.1016/j.wace.2025.100828)
 
-This repository contains the code to train, evaluate and run our nowcast model DustCast from the paper:
+This repository contains the code to train, evaluate, and run our nowcast model DustCast from the paper:
 
 [Hermes, K., Marsham, J. H., Bollasina, M., Brooks, M., Klose, M., & Marenco, F. (2025). Nowcasting of dust and convective storms via diffusion-model predictions of SEVIRI RGB imagery. Weather and Climate Extremes, 100828.](https://doi.org/10.1016/j.wace.2025.100828)
 
 
-*DustCast is a simple diffusion model for image-based nowcasting of dust storms in West Africa. The model performs image-to-image translation in pixel space to predict next frames of the SEVIRI desert dust RGB composite, a product of false-colour satellite images highlighting both dust and deep convection. DustCast was trained for a large domain over West Africa and can predict both convective storms and convectively generated dust storms which currently operational numerical weather prediction (NWP) models may not reliably reproduce. Furthermore, it can generate ensemble predictions, allowing a probabilistic forecast assessment. On average, our model achieves useful skill (Fractions Skill Score > 0.5) for predicting dust storms up to 5 hours lead time, and for convective systems for up to 4 hours. Our approach provides a valuable tool that could be used in operational forecasting to improve the prediction of dust storms, convective storms, and indeed other weather events. Due to the technical similarity of RGB composite imagery from geostationary satellites, this approach could also be adapted to nowcast other RGB composites, such as those for ash, or convective storms.*
+*DustCast is a simple diffusion model for image-based nowcasting of dust storms in West Africa. The model performs image-to-image translation in pixel space to predict next frames of the SEVIRI desert dust RGB composite, a product of false-colour satellite images highlighting both dust and deep convection. DustCast was trained for a large domain over West Africa and can predict both convective storms and convectively generated dust storms that current operational numerical weather prediction (NWP) models may not reliably reproduce. Furthermore, it can generate ensemble predictions, allowing a probabilistic forecast assessment. On average, our model achieves useful skill (Fractions Skill Score > 0.5) for predicting dust storms up to 5 hours lead time, and for convective systems for up to 4 hours. Our approach provides a valuable tool that could be used in operational forecasting to improve the prediction of dust storms, convective storms, and indeed other weather events. Due to the technical similarity of RGB composite imagery from geostationary satellites, this approach could also be adapted to nowcast other RGB composites, such as those for ash or convective storms.*
 
 ### Example nowcast initialised on 07 June 2024, 17 UTC
 ![animation](./plt/supplementary_animation.gif)
@@ -17,8 +17,8 @@ This repository contains the code to train, evaluate and run our nowcast model D
 
 # Installation
 
-We recommend to install the code in its own environment.
-Clone this repository, then run in its main directory
+We recommend installing the code in its own environment.
+Clone this repository, then run in its main directory:
 ```
 pip install -e .
 ```
@@ -43,7 +43,7 @@ In the main DustCast directory, run
 ```
 python nowcast.py --arg_init=20240607T1700 --n_fcframes 8 --n_ens=5
 ```
-This will initialise a nowcast with the most recent data at 07 June 2024 17:00 and generate an ensemble prediction with 5 members for the next 8 frames (+2 hours). By default, the output (predicted brightness temperatures) is saved into a netCDF file. You can use quicklook tools like [ncview](https://anaconda.org/conda-forge/ncview) or [Panoply](https://www.giss.nasa.gov/tools/panoply/) to have a look into the output fields. DustCast can also save RGB images and predicted probabilities for dust and convection. For more settings, see the config file `/dustcast/config/nowcast.yaml`. Note that command line arguments always override settings from the config file.
+This will initialise a nowcast with the most recent data at 07 June 2024 17:00 and generate an ensemble prediction with 5 members for the next 8 frames (+2 hours). By default, the output (predicted brightness temperatures) is saved into a netCDF file. You can use quicklook tools like [ncview](https://anaconda.org/conda-forge/ncview) or [Panoply](https://www.giss.nasa.gov/tools/panoply/) to inspect the output fields. DustCast can also save RGB images and predicted probabilities for dust and convection. For more settings, see the config file `/dustcast/config/nowcast.yaml`. Note that command line arguments always override settings from the config file.
 
 
 # Training and evaluation
@@ -83,4 +83,4 @@ Model evaluation is split into three blocks:
    Use the notebook `eval_visualise_metrics.ipynb` to compute mean evaluation metrics from the previously computed statistics. For a closer look at individual forecasts, use the notebook `eval_visualise_casestudy.ipynb` to generate map plots of the RGB images and detected feature masks.
 
 # License
-This code is released under the [MIT License](https://github.com/kfhermes/DustCast_draft/blob/main/LICENSE).# DustCast_dev
+This code is released under the [MIT License](https://github.com/kfhermes/DustCast_draft/blob/main/LICENSE).
